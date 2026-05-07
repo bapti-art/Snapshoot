@@ -1,0 +1,25 @@
+:root {
+  color-scheme: dark;
+  --ion-color-primary: #6be4c8;
+  --ion-color-primary-rgb: 107, 228, 200;
+  --ion-color-primary-contrast: #04111f;
+  --ion-color-primary-contrast-rgb: 4, 17, 31;
+  --ion-color-primary-shade: #5dc9b0;
+  --ion-color-primary-tint: #7ee8cf;
+
+  --ion-background-color: #07111f;
+  --ion-text-color: #eef4ff;
+  --ion-font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #07111f;
+}
+
+body {
+  font-family: var(--ion-font-family);
+}
