@@ -86,7 +86,6 @@ junit.xml
 # CAPACITOR SPECIFIC
 # ============================================
 ios/
-android/
 web/
 .capacitor/
 capacitor.config.json

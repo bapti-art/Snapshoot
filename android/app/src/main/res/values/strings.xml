@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Snapshoot</string>
+    <string name="title_activity_main">Snapshoot</string>
+    <string name="package_name">com.snapshoot.app</string>
+    <string name="custom_url_scheme">com.snapshoot.app</string>
+</resources>
