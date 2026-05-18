@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "cap:sync": "npm run build && npx cap sync",
-    "cap:open:android": "npx cap open android"
+    "cap:open:android": "npx cap open android",
+    "android:usb": "node scripts/android-usb.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.3.1",
