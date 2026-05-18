@@ -93,23 +93,6 @@ ion-content {
   line-height: 1.6;
 }
 
-.hero-panel {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: flex-end;
-  position: relative;
-  z-index: 1;
-}
-
-.hero-tag {
-  padding: 11px 15px;
-  border-radius: 999px;
-  background: rgba(17, 17, 17, 0.04);
-  border: 1px solid rgba(17, 17, 17, 0.08);
-  font-size: 0.9rem;
-}
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -504,10 +487,6 @@ ion-content {
   .stats-grid,
   .toolbar-row {
     grid-template-columns: 1fr;
-  }
-
-  .hero-panel {
-    justify-content: flex-start;
   }
 }
 

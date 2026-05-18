@@ -6,6 +6,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+
 import { IonContent, IonPage } from "@ionic/react";
 import { getCurrentLocation } from "../services/geolocation";
 import {
@@ -115,6 +116,7 @@ const Home = () => {
     [selectedUserId, users],
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const storyAuthor = useMemo(
     () => users.find((user) => user.id === storyDraft.authorId) ?? null,
     [storyDraft.authorId, users],
@@ -415,38 +417,17 @@ const Home = () => {
     }
   };
 
+  const dashboardStats = [
+    { label: "Utilisateurs", value: users.length.toString() },
+    { label: "Messages", value: messages.length.toString() },
+    { label: "Stories", value: stories.length.toString() },
+    { label: "Connexion", value: loading ? "Sync..." : "Live JSON" },
+  ];
+
   return (
     <IonPage>
       <IonContent fullscreen>
         <div className="snapshoot-shell">
-          <section className="hero-card">
-            <div>
-              <p className="eyebrow">Snapshoot</p>
-              <h1>
-                Social mobile pour messages, groupes et stories géolocalisées.
-              </h1>
-              <p className="hero-copy">
-                Démo complète pour le grading: CRUD utilisateurs, recherche par
-                email ou id, messages privés ou de groupe, et découverte de
-                contenus autour de la position GPS.
-              </p>
-            </div>
-            <div className="hero-panel">
-              <span className="hero-tag">Android-ready</span>
-              <span className="hero-tag">Backend JSON local</span>
-              <span className="hero-tag">Media image / vidéo</span>
-            </div>
-          </section>
-
-          <section className="stats-grid">
-            {dashboardStats.map((item) => (
-              <article key={item.label} className="stat-card">
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-              </article>
-            ))}
-          </section>
-
           <section className="toolbar-card">
             <div className="toolbar-row">
               <label>
