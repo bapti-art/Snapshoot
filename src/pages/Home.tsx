@@ -50,12 +50,10 @@ type MessageDraft = {
 type StoryDraft = {
   authorId: string;
   text: string;
-  lat: string;
-  lng: string;
   media: MediaAttachment | null;
 };
 
-type AppTab = "overview" | "users" | "friends" | "messages" | "stories";
+type AppTab = "users" | "friends" | "messages" | "stories";
 
 const blankUserDraft: UserDraft = {
   name: "",
@@ -77,8 +75,6 @@ const blankMessageDraft: MessageDraft = {
 const blankStoryDraft: StoryDraft = {
   authorId: "",
   text: "",
-  lat: "",
-  lng: "",
   media: null,
 };
 
@@ -105,10 +101,11 @@ const Home = () => {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [messageDraft, setMessageDraft] =
     useState<MessageDraft>(blankMessageDraft);
+  const [recipientCandidateId, setRecipientCandidateId] = useState("");
   const [storyDraft, setStoryDraft] = useState<StoryDraft>(blankStoryDraft);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<AppTab>("overview");
+  const [activeTab, setActiveTab] = useState<AppTab>("users");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null,
   );
@@ -121,6 +118,14 @@ const Home = () => {
   const storyAuthor = useMemo(
     () => users.find((user) => user.id === storyDraft.authorId) ?? null,
     [storyDraft.authorId, users],
+  );
+
+  const selectedRecipients = useMemo(
+    () =>
+      messageDraft.recipientIds
+        .map((recipientId) => users.find((user) => user.id === recipientId))
+        .filter((user): user is User => Boolean(user)),
+    [messageDraft.recipientIds, users],
   );
 
   useEffect(() => {
@@ -342,15 +347,35 @@ const Home = () => {
     }
   };
 
+  const handleAddRecipient = () => {
+    if (!recipientCandidateId) {
+      return;
+    }
+
+    setMessageDraft((current) => {
+      if (current.recipientIds.includes(recipientCandidateId)) {
+        return current;
+      }
+
+      return {
+        ...current,
+        recipientIds: [...current.recipientIds, recipientCandidateId],
+      };
+    });
+    setRecipientCandidateId("");
+  };
+
+  const handleRemoveRecipient = (recipientId: string) => {
+    setMessageDraft((current) => ({
+      ...current,
+      recipientIds: current.recipientIds.filter((id) => id !== recipientId),
+    }));
+  };
+
   const useCurrentLocation = async () => {
     try {
       const nextLocation = await getCurrentLocation();
       setLocation(nextLocation);
-      setStoryDraft((current) => ({
-        ...current,
-        lat: String(nextLocation.lat),
-        lng: String(nextLocation.lng),
-      }));
       setSuccess("Position GPS mise à jour.");
       void refreshAll(nextLocation);
     } catch (error) {
@@ -370,30 +395,25 @@ const Home = () => {
     }
 
     try {
+      const gpsLocation = await getCurrentLocation();
+      setLocation(gpsLocation);
       await createStory({
         authorId: storyDraft.authorId,
         text: storyDraft.text,
         media: storyDraft.media,
-        lat: Number(storyDraft.lat) || storyAuthor?.lat,
-        lng: Number(storyDraft.lng) || storyAuthor?.lng,
+        lat: gpsLocation.lat,
+        lng: gpsLocation.lng,
       });
       setStoryDraft((current) => ({
         ...blankStoryDraft,
         authorId: current.authorId,
       }));
-      setSuccess("Story publiée.");
-      await refreshAll();
+      setSuccess("Story publiée avec ta position actuelle.");
+      await refreshAll(gpsLocation);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Erreur inconnue");
     }
   };
-
-  const dashboardStats = [
-    { label: "Utilisateurs", value: users.length.toString() },
-    { label: "Messages", value: messages.length.toString() },
-    { label: "Stories", value: stories.length.toString() },
-    { label: "Connexion", value: loading ? "Sync..." : "Live JSON" },
-  ];
 
   return (
     <IonPage>
@@ -480,7 +500,6 @@ const Home = () => {
             aria-label="Navigation principale"
           >
             {[
-              { id: "overview", label: "Aperçu" },
               { id: "users", label: "Utilisateurs" },
               { id: "friends", label: "Amis" },
               { id: "messages", label: "Messages" },
@@ -498,71 +517,6 @@ const Home = () => {
               </button>
             ))}
           </section>
-
-          {activeTab === "overview" ? (
-            <section className="panel-card overview-panel">
-              <div className="panel-header">
-                <div>
-                  <p className="section-kicker">Vue d'ensemble</p>
-                  <h2>Navigation par onglets, comme une app sociale mobile</h2>
-                </div>
-              </div>
-
-              <div className="overview-grid">
-                {dashboardStats.map((item) => (
-                  <article key={item.label} className="overview-card">
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </article>
-                ))}
-              </div>
-
-              <div className="overview-split">
-                <article className="overview-card overview-card--wide">
-                  <span>Profil courant</span>
-                  {selectedUser ? (
-                    <>
-                      <strong>{selectedUser.name}</strong>
-                      <p>{selectedUser.email}</p>
-                      <p>{selectedUser.city}</p>
-                    </>
-                  ) : (
-                    <p className="empty-state">
-                      Sélectionne un utilisateur pour débloquer les actions
-                      sociales.
-                    </p>
-                  )}
-                </article>
-
-                <article className="overview-card overview-card--wide">
-                  <span>Raccourcis</span>
-                  <div className="inline-actions">
-                    <button
-                      type="button"
-                      className="primary-button"
-                      onClick={() => setActiveTab("users")}
-                    >
-                      Utilisateurs
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() => setActiveTab("messages")}
-                    >
-                      Messages
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() => setActiveTab("stories")}
-                    >
-                      Stories
-                    </button>
-                  </div>
-                </article>
-              </div>
-            </section>
-          ) : null}
 
           <div className="content-grid">
             <section
@@ -839,10 +793,16 @@ const Home = () => {
                       required
                       value={messageDraft.senderId}
                       onChange={(event) =>
-                        setMessageDraft((current) => ({
-                          ...current,
-                          senderId: event.target.value,
-                        }))
+                        setMessageDraft((current) => {
+                          const nextSenderId = event.target.value;
+                          return {
+                            ...current,
+                            senderId: nextSenderId,
+                            recipientIds: current.recipientIds.filter(
+                              (recipientId) => recipientId !== nextSenderId,
+                            ),
+                          };
+                        })
                       }
                     >
                       <option value="">Choisir</option>
@@ -854,24 +814,20 @@ const Home = () => {
                     </select>
                   </label>
                   <label>
-                    Destinataires
+                    Destinataire
                     <select
-                      required
-                      multiple
-                      size={6}
-                      value={messageDraft.recipientIds}
+                      value={recipientCandidateId}
                       onChange={(event) =>
-                        setMessageDraft((current) => ({
-                          ...current,
-                          recipientIds: Array.from(
-                            event.target.selectedOptions,
-                            (option) => option.value,
-                          ),
-                        }))
+                        setRecipientCandidateId(event.target.value)
                       }
                     >
+                      <option value="">Choisir</option>
                       {users
-                        .filter((user) => user.id !== messageDraft.senderId)
+                        .filter(
+                          (user) =>
+                            user.id !== messageDraft.senderId &&
+                            !messageDraft.recipientIds.includes(user.id),
+                        )
                         .map((user) => (
                           <option key={user.id} value={user.id}>
                             {user.name} ({user.id})
@@ -879,6 +835,37 @@ const Home = () => {
                         ))}
                     </select>
                   </label>
+                </div>
+
+                <div className="inline-actions">
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={handleAddRecipient}
+                  >
+                    Ajouter destinataire
+                  </button>
+                </div>
+
+                <div className="recipient-list">
+                  {selectedRecipients.length === 0 ? (
+                    <p className="empty-state">
+                      Aucun destinataire sélectionné.
+                    </p>
+                  ) : (
+                    selectedRecipients.map((recipient) => (
+                      <article key={recipient.id} className="recipient-pill">
+                        <span>{recipient.name}</span>
+                        <button
+                          type="button"
+                          className="danger-button"
+                          onClick={() => handleRemoveRecipient(recipient.id)}
+                        >
+                          Retirer
+                        </button>
+                      </article>
+                    ))
+                  )}
                 </div>
 
                 <label>
@@ -1015,34 +1002,6 @@ const Home = () => {
                     </select>
                   </label>
                   <label>
-                    Latitude
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={storyDraft.lat}
-                      onChange={(event) =>
-                        setStoryDraft((current) => ({
-                          ...current,
-                          lat: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label>
-                    Longitude
-                    <input
-                      type="number"
-                      step="0.0001"
-                      value={storyDraft.lng}
-                      onChange={(event) =>
-                        setStoryDraft((current) => ({
-                          ...current,
-                          lng: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label>
                     Média
                     <input
                       type="file"
@@ -1088,13 +1047,6 @@ const Home = () => {
                 ) : null}
 
                 <div className="inline-actions">
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={useCurrentLocation}
-                  >
-                    Copier le GPS
-                  </button>
                   <button type="submit" className="primary-button">
                     Publier
                   </button>

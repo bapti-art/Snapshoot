@@ -132,6 +132,8 @@ ion-content {
   display: block;
   margin-top: 8px;
   font-size: 1.7rem;
+  line-height: 1.05;
+  white-space: nowrap;
 }
 
 .toolbar-card,
@@ -273,6 +275,8 @@ ion-content {
   display: block;
   margin-top: 8px;
   font-size: 1.5rem;
+  line-height: 1.05;
+  white-space: nowrap;
 }
 
 .overview-card--wide p {
@@ -324,6 +328,30 @@ ion-content {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.recipient-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recipient-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  background: #ffffff;
+}
+
+.recipient-pill span {
+  font-weight: 600;
+}
+
+.recipient-pill .danger-button {
+  padding: 8px 10px;
 }
 
 .primary-button,
@@ -488,6 +516,23 @@ ion-content {
     padding: 12px;
   }
 
+  .tab-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 10px;
+    border-radius: 22px;
+    scrollbar-width: none;
+  }
+
+  .tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-button {
+    flex: 0 0 auto;
+    padding: 11px 14px;
+  }
+
   .hero-card,
   .panel-card,
   .toolbar-card {
@@ -497,6 +542,25 @@ ion-content {
 
   .hero-card h1 {
     max-width: none;
+    font-size: clamp(1.9rem, 10vw, 2.6rem);
+  }
+
+  .stats-grid,
+  .overview-grid,
+  .overview-split {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-card strong {
+    font-size: 1.25rem;
+  }
+
+  .stat-card strong {
+    font-size: 1.35rem;
+  }
+
+  .hero-copy {
+    font-size: 0.98rem;
   }
 
   .two-columns {
