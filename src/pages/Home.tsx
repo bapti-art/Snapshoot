@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { IonContent, IonPage } from '@ionic/react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+import { IonContent, IonPage } from "@ionic/react";
+import { getCurrentLocation } from "../services/geolocation";
 import {
   connectFriends,
   createStory,
@@ -12,9 +20,15 @@ import {
   searchUsers,
   sendMessage,
   updateUser,
-} from '../services/api';
-import type { MediaAttachment, Message, NearbyStory, User, UserMatch } from '../shared/types';
-import './Home.css';
+} from "../services/api";
+import type {
+  MediaAttachment,
+  Message,
+  NearbyStory,
+  User,
+  UserMatch,
+} from "../shared/types";
+import "./Home.css";
 
 type UserDraft = {
   name: string;
@@ -41,56 +55,63 @@ type StoryDraft = {
   media: MediaAttachment | null;
 };
 
+type AppTab = "overview" | "users" | "friends" | "messages" | "stories";
+
 const blankUserDraft: UserDraft = {
-  name: '',
-  email: '',
-  city: '',
-  bio: '',
-  avatarUrl: '',
-  lat: '',
-  lng: '',
+  name: "",
+  email: "",
+  city: "",
+  bio: "",
+  avatarUrl: "",
+  lat: "",
+  lng: "",
 };
 
 const blankMessageDraft: MessageDraft = {
-  senderId: '',
+  senderId: "",
   recipientIds: [],
-  text: '',
+  text: "",
   attachments: [],
 };
 
 const blankStoryDraft: StoryDraft = {
-  authorId: '',
-  text: '',
-  lat: '',
-  lng: '',
+  authorId: "",
+  text: "",
+  lat: "",
+  lng: "",
   media: null,
 };
 
 const formatDate = (value: string) =>
-  new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
+  new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(value));
 
-const getUserLabel = (user: User | undefined) => (user ? `${user.name} · ${user.city}` : 'Utilisateur inconnu');
+const getUserLabel = (user: User | undefined) =>
+  user ? `${user.name} · ${user.city}` : "Utilisateur inconnu";
 
 const Home = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [stories, setStories] = useState<NearbyStory[]>([]);
   const [searchResults, setSearchResults] = useState<UserMatch[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchRadius, setSearchRadius] = useState('40');
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchRadius, setSearchRadius] = useState("40");
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [userDraft, setUserDraft] = useState<UserDraft>(blankUserDraft);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [messageDraft, setMessageDraft] = useState<MessageDraft>(blankMessageDraft);
+  const [messageDraft, setMessageDraft] =
+    useState<MessageDraft>(blankMessageDraft);
   const [storyDraft, setStoryDraft] = useState<StoryDraft>(blankStoryDraft);
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [activeTab, setActiveTab] = useState<AppTab>("overview");
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
 
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) ?? null,
@@ -118,39 +139,58 @@ const Home = () => {
 
   const setSuccess = (message: string) => {
     setFeedback(message);
-    window.setTimeout(() => setFeedback(''), 3200);
+    window.setTimeout(() => setFeedback(""), 3200);
   };
 
-  const refreshAll = useCallback(async (nextLocation = location) => {
-    setLoading(true);
-    try {
-      const [nextUsers, nextMessages, nextStories] = await Promise.all([
-        listUsers(),
-        listMessages(),
-        listStories(nextLocation?.lat, nextLocation?.lng, Number(searchRadius) || 40),
-      ]);
-      setUsers(nextUsers);
-      setMessages(nextMessages);
-      setStories(nextStories);
-      setSearchResults([]);
+  const refreshAll = useCallback(
+    async (nextLocation = location) => {
+      setLoading(true);
+      try {
+        const [nextUsers, nextMessages, nextStories] = await Promise.all([
+          listUsers(),
+          listMessages(),
+          listStories(
+            nextLocation?.lat,
+            nextLocation?.lng,
+            Number(searchRadius) || 40,
+          ),
+        ]);
+        setUsers(nextUsers);
+        setMessages(nextMessages);
+        setStories(nextStories);
+        setSearchResults([]);
 
-      if (!selectedUserId && nextUsers.length > 0) {
-        setSelectedUserId(nextUsers[0].id);
-      }
+        if (!selectedUserId && nextUsers.length > 0) {
+          setSelectedUserId(nextUsers[0].id);
+        }
 
-      if (!messageDraft.senderId && nextUsers.length > 0) {
-        setMessageDraft((current) => ({ ...current, senderId: nextUsers[0].id }));
-      }
+        if (!messageDraft.senderId && nextUsers.length > 0) {
+          setMessageDraft((current) => ({
+            ...current,
+            senderId: nextUsers[0].id,
+          }));
+        }
 
-      if (!storyDraft.authorId && nextUsers.length > 0) {
-        setStoryDraft((current) => ({ ...current, authorId: nextUsers[0].id }));
+        if (!storyDraft.authorId && nextUsers.length > 0) {
+          setStoryDraft((current) => ({
+            ...current,
+            authorId: nextUsers[0].id,
+          }));
+        }
+      } catch (error) {
+        setFeedback(error instanceof Error ? error.message : "Erreur inconnue");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Erreur inconnue');
-    } finally {
-      setLoading(false);
-    }
-  }, [location, messageDraft.senderId, searchRadius, selectedUserId, storyDraft.authorId]);
+    },
+    [
+      location,
+      messageDraft.senderId,
+      searchRadius,
+      selectedUserId,
+      storyDraft.authorId,
+    ],
+  );
 
   useEffect(() => {
     void refreshAll();
@@ -188,7 +228,7 @@ const Home = () => {
           lat: Number(userDraft.lat) || 0,
           lng: Number(userDraft.lng) || 0,
         });
-        setSuccess('Utilisateur mis à jour.');
+        setSuccess("Utilisateur mis à jour.");
       } else {
         await createUser({
           name: userDraft.name,
@@ -199,17 +239,19 @@ const Home = () => {
           lat: Number(userDraft.lat) || 0,
           lng: Number(userDraft.lng) || 0,
         });
-        setSuccess('Utilisateur créé.');
+        setSuccess("Utilisateur créé.");
       }
       resetUserForm();
       await refreshAll();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Erreur inconnue');
+      setFeedback(error instanceof Error ? error.message : "Erreur inconnue");
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    const confirmed = window.confirm('Supprimer cet utilisateur et ses données liées ?');
+    const confirmed = window.confirm(
+      "Supprimer cet utilisateur et ses données liées ?",
+    );
     if (!confirmed) {
       return;
     }
@@ -217,43 +259,47 @@ const Home = () => {
     try {
       await deleteUser(userId);
       if (selectedUserId === userId) {
-        setSelectedUserId('');
+        setSelectedUserId("");
       }
       if (messageDraft.senderId === userId) {
-        setMessageDraft((current) => ({ ...current, senderId: '' }));
+        setMessageDraft((current) => ({ ...current, senderId: "" }));
       }
       if (storyDraft.authorId === userId) {
-        setStoryDraft((current) => ({ ...current, authorId: '' }));
+        setStoryDraft((current) => ({ ...current, authorId: "" }));
       }
-      setSuccess('Utilisateur supprimé.');
+      setSuccess("Utilisateur supprimé.");
       await refreshAll();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Erreur inconnue');
+      setFeedback(error instanceof Error ? error.message : "Erreur inconnue");
     }
   };
 
   const handleFriendSearch = async () => {
     try {
-      const results = await searchUsers(searchQuery, location?.lat, location?.lng);
+      const results = await searchUsers(
+        searchQuery,
+        location?.lat,
+        location?.lng,
+      );
       setSearchResults(results);
       setSuccess(`${results.length} résultat(s) trouvé(s).`);
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Erreur inconnue');
+      setFeedback(error instanceof Error ? error.message : "Erreur inconnue");
     }
   };
 
   const handleConnectFriend = async (friendId: string) => {
     if (!selectedUserId) {
-      setFeedback('Sélectionne d’abord un utilisateur courant.');
+      setFeedback("Sélectionne d’abord un utilisateur courant.");
       return;
     }
 
     try {
       await connectFriends(selectedUserId, friendId);
-      setSuccess('Ami ajouté.');
+      setSuccess("Ami ajouté.");
       await refreshAll();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Erreur inconnue');
+      setFeedback(error instanceof Error ? error.message : "Erreur inconnue");
     }
   };
 
@@ -274,7 +320,7 @@ const Home = () => {
   const handleMessageSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!messageDraft.senderId || messageDraft.recipientIds.length === 0) {
-      setFeedback('Sélectionne un expéditeur et au moins un destinataire.');
+      setFeedback("Sélectionne un expéditeur et au moins un destinataire.");
       return;
     }
 
@@ -289,47 +335,37 @@ const Home = () => {
         ...blankMessageDraft,
         senderId: current.senderId,
       }));
-      setSuccess('Message envoyé.');
+      setSuccess("Message envoyé.");
       await refreshAll();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Erreur inconnue');
+      setFeedback(error instanceof Error ? error.message : "Erreur inconnue");
     }
   };
 
-  const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setFeedback('La géolocalisation n’est pas disponible.');
-      return;
+  const useCurrentLocation = async () => {
+    try {
+      const nextLocation = await getCurrentLocation();
+      setLocation(nextLocation);
+      setStoryDraft((current) => ({
+        ...current,
+        lat: String(nextLocation.lat),
+        lng: String(nextLocation.lng),
+      }));
+      setSuccess("Position GPS mise à jour.");
+      void refreshAll(nextLocation);
+    } catch (error) {
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : "Impossible de récupérer la position GPS.",
+      );
     }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const nextLocation = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-        setLocation(nextLocation);
-        setStoryDraft((current) => ({
-          ...current,
-          lat: String(nextLocation.lat),
-          lng: String(nextLocation.lng),
-        }));
-        void refreshAll(nextLocation);
-      },
-      () => {
-        setFeedback('Impossible de récupérer la position GPS.');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-      },
-    );
   };
 
   const handleStorySubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!storyDraft.authorId || !storyDraft.text.trim()) {
-      setFeedback('Sélectionne un auteur et un texte pour la story.');
+      setFeedback("Sélectionne un auteur et un texte pour la story.");
       return;
     }
 
@@ -345,18 +381,18 @@ const Home = () => {
         ...blankStoryDraft,
         authorId: current.authorId,
       }));
-      setSuccess('Story publiée.');
+      setSuccess("Story publiée.");
       await refreshAll();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Erreur inconnue');
+      setFeedback(error instanceof Error ? error.message : "Erreur inconnue");
     }
   };
 
   const dashboardStats = [
-    { label: 'Utilisateurs', value: users.length.toString() },
-    { label: 'Messages', value: messages.length.toString() },
-    { label: 'Stories', value: stories.length.toString() },
-    { label: 'Connexion', value: loading ? 'Sync...' : 'Live JSON' },
+    { label: "Utilisateurs", value: users.length.toString() },
+    { label: "Messages", value: messages.length.toString() },
+    { label: "Stories", value: stories.length.toString() },
+    { label: "Connexion", value: loading ? "Sync..." : "Live JSON" },
   ];
 
   return (
@@ -366,10 +402,13 @@ const Home = () => {
           <section className="hero-card">
             <div>
               <p className="eyebrow">Snapshoot</p>
-              <h1>Social mobile pour messages, groupes et stories géolocalisées.</h1>
+              <h1>
+                Social mobile pour messages, groupes et stories géolocalisées.
+              </h1>
               <p className="hero-copy">
-                Démo complète pour le grading: CRUD utilisateurs, recherche par email ou id,
-                messages privés ou de groupe, et découverte de contenus autour de la position GPS.
+                Démo complète pour le grading: CRUD utilisateurs, recherche par
+                email ou id, messages privés ou de groupe, et découverte de
+                contenus autour de la position GPS.
               </p>
             </div>
             <div className="hero-panel">
@@ -392,7 +431,10 @@ const Home = () => {
             <div className="toolbar-row">
               <label>
                 Utilisateur actif
-                <select value={selectedUserId} onChange={(event) => setSelectedUserId(event.target.value)}>
+                <select
+                  value={selectedUserId}
+                  onChange={(event) => setSelectedUserId(event.target.value)}
+                >
                   <option value="">Sélectionner</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
@@ -413,10 +455,18 @@ const Home = () => {
                 />
               </label>
 
-              <button type="button" className="ghost-button" onClick={() => void refreshAll()}>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => void refreshAll()}
+              >
                 Rafraîchir
               </button>
-              <button type="button" className="ghost-button" onClick={useCurrentLocation}>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={useCurrentLocation}
+              >
                 Utiliser le GPS
               </button>
             </div>
@@ -424,15 +474,115 @@ const Home = () => {
             {feedback ? <p className="feedback-banner">{feedback}</p> : null}
           </section>
 
+          <section
+            className="tab-bar"
+            role="tablist"
+            aria-label="Navigation principale"
+          >
+            {[
+              { id: "overview", label: "Aperçu" },
+              { id: "users", label: "Utilisateurs" },
+              { id: "friends", label: "Amis" },
+              { id: "messages", label: "Messages" },
+              { id: "stories", label: "Stories" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                className={`tab-button ${activeTab === tab.id ? "active" : ""}`}
+                onClick={() => setActiveTab(tab.id as AppTab)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </section>
+
+          {activeTab === "overview" ? (
+            <section className="panel-card overview-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="section-kicker">Vue d'ensemble</p>
+                  <h2>Navigation par onglets, comme une app sociale mobile</h2>
+                </div>
+              </div>
+
+              <div className="overview-grid">
+                {dashboardStats.map((item) => (
+                  <article key={item.label} className="overview-card">
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </article>
+                ))}
+              </div>
+
+              <div className="overview-split">
+                <article className="overview-card overview-card--wide">
+                  <span>Profil courant</span>
+                  {selectedUser ? (
+                    <>
+                      <strong>{selectedUser.name}</strong>
+                      <p>{selectedUser.email}</p>
+                      <p>{selectedUser.city}</p>
+                    </>
+                  ) : (
+                    <p className="empty-state">
+                      Sélectionne un utilisateur pour débloquer les actions
+                      sociales.
+                    </p>
+                  )}
+                </article>
+
+                <article className="overview-card overview-card--wide">
+                  <span>Raccourcis</span>
+                  <div className="inline-actions">
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() => setActiveTab("users")}
+                    >
+                      Utilisateurs
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => setActiveTab("messages")}
+                    >
+                      Messages
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => setActiveTab("stories")}
+                    >
+                      Stories
+                    </button>
+                  </div>
+                </article>
+              </div>
+            </section>
+          ) : null}
+
           <div className="content-grid">
-            <section className="panel-card">
+            <section
+              className={`panel-card tab-panel ${activeTab === "users" ? "" : "tab-panel--hidden"}`}
+            >
               <div className="panel-header">
                 <div>
                   <p className="section-kicker">User management</p>
-                  <h2>{editingUserId ? 'Modifier un utilisateur' : 'Créer un utilisateur'}</h2>
+                  <h2>
+                    {editingUserId
+                      ? "Modifier un utilisateur"
+                      : "Créer un utilisateur"}
+                  </h2>
                 </div>
                 {editingUserId ? (
-                  <button type="button" className="ghost-button" onClick={resetUserForm}>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={resetUserForm}
+                  >
                     Annuler
                   </button>
                 ) : null}
@@ -445,7 +595,12 @@ const Home = () => {
                     <input
                       required
                       value={userDraft.name}
-                      onChange={(event) => setUserDraft((current) => ({ ...current, name: event.target.value }))}
+                      onChange={(event) =>
+                        setUserDraft((current) => ({
+                          ...current,
+                          name: event.target.value,
+                        }))
+                      }
                     />
                   </label>
                   <label>
@@ -454,7 +609,12 @@ const Home = () => {
                       required
                       type="email"
                       value={userDraft.email}
-                      onChange={(event) => setUserDraft((current) => ({ ...current, email: event.target.value }))}
+                      onChange={(event) =>
+                        setUserDraft((current) => ({
+                          ...current,
+                          email: event.target.value,
+                        }))
+                      }
                     />
                   </label>
                   <label>
@@ -462,14 +622,24 @@ const Home = () => {
                     <input
                       required
                       value={userDraft.city}
-                      onChange={(event) => setUserDraft((current) => ({ ...current, city: event.target.value }))}
+                      onChange={(event) =>
+                        setUserDraft((current) => ({
+                          ...current,
+                          city: event.target.value,
+                        }))
+                      }
                     />
                   </label>
                   <label>
                     Avatar URL
                     <input
                       value={userDraft.avatarUrl}
-                      onChange={(event) => setUserDraft((current) => ({ ...current, avatarUrl: event.target.value }))}
+                      onChange={(event) =>
+                        setUserDraft((current) => ({
+                          ...current,
+                          avatarUrl: event.target.value,
+                        }))
+                      }
                     />
                   </label>
                   <label>
@@ -478,7 +648,12 @@ const Home = () => {
                       type="number"
                       step="0.0001"
                       value={userDraft.lat}
-                      onChange={(event) => setUserDraft((current) => ({ ...current, lat: event.target.value }))}
+                      onChange={(event) =>
+                        setUserDraft((current) => ({
+                          ...current,
+                          lat: event.target.value,
+                        }))
+                      }
                     />
                   </label>
                   <label>
@@ -487,7 +662,12 @@ const Home = () => {
                       type="number"
                       step="0.0001"
                       value={userDraft.lng}
-                      onChange={(event) => setUserDraft((current) => ({ ...current, lng: event.target.value }))}
+                      onChange={(event) =>
+                        setUserDraft((current) => ({
+                          ...current,
+                          lng: event.target.value,
+                        }))
+                      }
                     />
                   </label>
                 </div>
@@ -496,11 +676,16 @@ const Home = () => {
                   <textarea
                     rows={4}
                     value={userDraft.bio}
-                    onChange={(event) => setUserDraft((current) => ({ ...current, bio: event.target.value }))}
+                    onChange={(event) =>
+                      setUserDraft((current) => ({
+                        ...current,
+                        bio: event.target.value,
+                      }))
+                    }
                   />
                 </label>
                 <button type="submit" className="primary-button">
-                  {editingUserId ? 'Sauvegarder' : 'Créer'}
+                  {editingUserId ? "Sauvegarder" : "Créer"}
                 </button>
               </form>
 
@@ -508,9 +693,15 @@ const Home = () => {
                 <h3>Utilisateurs existants</h3>
                 <div className="user-list">
                   {users.map((user) => (
-                    <article key={user.id} className={`user-card ${selectedUserId === user.id ? 'active' : ''}`}>
+                    <article
+                      key={user.id}
+                      className={`user-card ${selectedUserId === user.id ? "active" : ""}`}
+                    >
                       <div className="user-card__top">
-                        <img src={user.avatarUrl || 'https://placehold.co/120x120'} alt={user.name} />
+                        <img
+                          src={user.avatarUrl || "https://placehold.co/120x120"}
+                          alt={user.name}
+                        />
                         <div>
                           <strong>{user.name}</strong>
                           <p>{user.email}</p>
@@ -522,10 +713,17 @@ const Home = () => {
                         ID {user.id} · {user.friends.length} ami(s)
                       </p>
                       <div className="card-actions">
-                        <button type="button" onClick={() => beginEditUser(user)}>
+                        <button
+                          type="button"
+                          onClick={() => beginEditUser(user)}
+                        >
                           Modifier
                         </button>
-                        <button type="button" className="danger-button" onClick={() => void handleDeleteUser(user.id)}>
+                        <button
+                          type="button"
+                          className="danger-button"
+                          onClick={() => void handleDeleteUser(user.id)}
+                        >
                           Supprimer
                         </button>
                       </div>
@@ -535,7 +733,9 @@ const Home = () => {
               </div>
             </section>
 
-            <section className="panel-card">
+            <section
+              className={`panel-card tab-panel ${activeTab === "users" || activeTab === "friends" ? "" : "tab-panel--hidden"}`}
+            >
               <div className="panel-header">
                 <div>
                   <p className="section-kicker">Find friends</p>
@@ -546,13 +746,24 @@ const Home = () => {
               <div className="stack-form">
                 <label>
                   Rechercher
-                  <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+                  <input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                  />
                 </label>
                 <div className="inline-actions">
-                  <button type="button" className="primary-button" onClick={() => void handleFriendSearch()}>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => void handleFriendSearch()}
+                  >
                     Chercher
                   </button>
-                  <button type="button" className="ghost-button" onClick={() => setSearchResults([])}>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => setSearchResults([])}
+                  >
                     Vider
                   </button>
                 </div>
@@ -562,18 +773,30 @@ const Home = () => {
                 <h3>Résultats</h3>
                 <div className="search-list">
                   {searchResults.length === 0 ? (
-                    <p className="empty-state">Aucun résultat affiché. Lance une recherche pour trouver des amis.</p>
+                    <p className="empty-state">
+                      Aucun résultat affiché. Lance une recherche pour trouver
+                      des amis.
+                    </p>
                   ) : (
                     searchResults.map((user) => (
                       <article key={user.id} className="result-card">
-                        <img src={user.avatarUrl || 'https://placehold.co/96x96'} alt={user.name} />
+                        <img
+                          src={user.avatarUrl || "https://placehold.co/96x96"}
+                          alt={user.name}
+                        />
                         <div>
                           <strong>{user.name}</strong>
                           <p>{user.email}</p>
                           <p>{user.city}</p>
-                          {user.distanceKm > 0 ? <p className="muted">{user.distanceKm} km</p> : null}
+                          {user.distanceKm > 0 ? (
+                            <p className="muted">{user.distanceKm} km</p>
+                          ) : null}
                         </div>
-                        <button type="button" className="primary-button" onClick={() => void handleConnectFriend(user.id)}>
+                        <button
+                          type="button"
+                          className="primary-button"
+                          onClick={() => void handleConnectFriend(user.id)}
+                        >
                           Ajouter
                         </button>
                       </article>
@@ -591,12 +814,16 @@ const Home = () => {
                     <span>{selectedUser.city}</span>
                   </article>
                 ) : (
-                  <p className="empty-state">Choisis un utilisateur pour activer les actions sociales.</p>
+                  <p className="empty-state">
+                    Choisis un utilisateur pour activer les actions sociales.
+                  </p>
                 )}
               </div>
             </section>
 
-            <section className="panel-card">
+            <section
+              className={`panel-card tab-panel ${activeTab === "messages" ? "" : "tab-panel--hidden"}`}
+            >
               <div className="panel-header">
                 <div>
                   <p className="section-kicker">Messaging</p>
@@ -612,7 +839,10 @@ const Home = () => {
                       required
                       value={messageDraft.senderId}
                       onChange={(event) =>
-                        setMessageDraft((current) => ({ ...current, senderId: event.target.value }))
+                        setMessageDraft((current) => ({
+                          ...current,
+                          senderId: event.target.value,
+                        }))
                       }
                     >
                       <option value="">Choisir</option>
@@ -633,7 +863,10 @@ const Home = () => {
                       onChange={(event) =>
                         setMessageDraft((current) => ({
                           ...current,
-                          recipientIds: Array.from(event.target.selectedOptions, (option) => option.value),
+                          recipientIds: Array.from(
+                            event.target.selectedOptions,
+                            (option) => option.value,
+                          ),
                         }))
                       }
                     >
@@ -654,7 +887,12 @@ const Home = () => {
                     rows={4}
                     required
                     value={messageDraft.text}
-                    onChange={(event) => setMessageDraft((current) => ({ ...current, text: event.target.value }))}
+                    onChange={(event) =>
+                      setMessageDraft((current) => ({
+                        ...current,
+                        text: event.target.value,
+                      }))
+                    }
                   />
                 </label>
 
@@ -666,21 +904,30 @@ const Home = () => {
                     onChange={async (event) => {
                       const file = event.target.files?.[0];
                       if (!file) {
-                        setMessageDraft((current) => ({ ...current, attachments: [] }));
+                        setMessageDraft((current) => ({
+                          ...current,
+                          attachments: [],
+                        }));
                         return;
                       }
                       const attachment = await fileToAttachment(file);
-                      setMessageDraft((current) => ({ ...current, attachments: [attachment] }));
+                      setMessageDraft((current) => ({
+                        ...current,
+                        attachments: [attachment],
+                      }));
                     }}
                   />
                 </label>
 
                 {messageDraft.attachments[0] ? (
                   <div className="attachment-preview">
-                    {messageDraft.attachments[0].type === 'video' ? (
+                    {messageDraft.attachments[0].type === "video" ? (
                       <video src={messageDraft.attachments[0].url} controls />
                     ) : (
-                      <img src={messageDraft.attachments[0].url} alt={messageDraft.attachments[0].name} />
+                      <img
+                        src={messageDraft.attachments[0].url}
+                        alt={messageDraft.attachments[0].name}
+                      />
                     )}
                   </div>
                 ) : null}
@@ -694,10 +941,16 @@ const Home = () => {
                 <h3>Messages récents</h3>
                 <div className="message-feed">
                   {messages.map((message) => {
-                    const sender = users.find((user) => user.id === message.senderId);
+                    const sender = users.find(
+                      (user) => user.id === message.senderId,
+                    );
                     const recipients = message.recipientIds
-                      .map((recipientId) => users.find((user) => user.id === recipientId)?.name ?? recipientId)
-                      .join(', ');
+                      .map(
+                        (recipientId) =>
+                          users.find((user) => user.id === recipientId)?.name ??
+                          recipientId,
+                      )
+                      .join(", ");
 
                     return (
                       <article key={message.id} className="message-card">
@@ -709,10 +962,16 @@ const Home = () => {
                         <p className="muted">Vers {recipients}</p>
                         {message.attachments[0] ? (
                           <div className="attachment-preview compact">
-                            {message.attachments[0].type === 'video' ? (
-                              <video src={message.attachments[0].url} controls />
+                            {message.attachments[0].type === "video" ? (
+                              <video
+                                src={message.attachments[0].url}
+                                controls
+                              />
                             ) : (
-                              <img src={message.attachments[0].url} alt={message.attachments[0].name} />
+                              <img
+                                src={message.attachments[0].url}
+                                alt={message.attachments[0].name}
+                              />
                             )}
                           </div>
                         ) : null}
@@ -723,7 +982,9 @@ const Home = () => {
               </div>
             </section>
 
-            <section className="panel-card wide-panel">
+            <section
+              className={`panel-card wide-panel tab-panel ${activeTab === "stories" ? "" : "tab-panel--hidden"}`}
+            >
               <div className="panel-header">
                 <div>
                   <p className="section-kicker">Geolocation</p>
@@ -738,7 +999,12 @@ const Home = () => {
                     <select
                       required
                       value={storyDraft.authorId}
-                      onChange={(event) => setStoryDraft((current) => ({ ...current, authorId: event.target.value }))}
+                      onChange={(event) =>
+                        setStoryDraft((current) => ({
+                          ...current,
+                          authorId: event.target.value,
+                        }))
+                      }
                     >
                       <option value="">Choisir</option>
                       {users.map((user) => (
@@ -754,7 +1020,12 @@ const Home = () => {
                       type="number"
                       step="0.0001"
                       value={storyDraft.lat}
-                      onChange={(event) => setStoryDraft((current) => ({ ...current, lat: event.target.value }))}
+                      onChange={(event) =>
+                        setStoryDraft((current) => ({
+                          ...current,
+                          lat: event.target.value,
+                        }))
+                      }
                     />
                   </label>
                   <label>
@@ -763,7 +1034,12 @@ const Home = () => {
                       type="number"
                       step="0.0001"
                       value={storyDraft.lng}
-                      onChange={(event) => setStoryDraft((current) => ({ ...current, lng: event.target.value }))}
+                      onChange={(event) =>
+                        setStoryDraft((current) => ({
+                          ...current,
+                          lng: event.target.value,
+                        }))
+                      }
                     />
                   </label>
                   <label>
@@ -773,7 +1049,10 @@ const Home = () => {
                       accept="image/*,video/*"
                       onChange={async (event) => {
                         await handleAttachmentChange(event, (attachment) =>
-                          setStoryDraft((current) => ({ ...current, media: attachment })),
+                          setStoryDraft((current) => ({
+                            ...current,
+                            media: attachment,
+                          })),
                         );
                       }}
                     />
@@ -786,22 +1065,34 @@ const Home = () => {
                     rows={4}
                     required
                     value={storyDraft.text}
-                    onChange={(event) => setStoryDraft((current) => ({ ...current, text: event.target.value }))}
+                    onChange={(event) =>
+                      setStoryDraft((current) => ({
+                        ...current,
+                        text: event.target.value,
+                      }))
+                    }
                   />
                 </label>
 
                 {storyDraft.media ? (
                   <div className="attachment-preview">
-                    {storyDraft.media.type === 'video' ? (
+                    {storyDraft.media.type === "video" ? (
                       <video src={storyDraft.media.url} controls />
                     ) : (
-                      <img src={storyDraft.media.url} alt={storyDraft.media.name} />
+                      <img
+                        src={storyDraft.media.url}
+                        alt={storyDraft.media.name}
+                      />
                     )}
                   </div>
                 ) : null}
 
                 <div className="inline-actions">
-                  <button type="button" className="ghost-button" onClick={useCurrentLocation}>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={useCurrentLocation}
+                  >
                     Copier le GPS
                   </button>
                   <button type="submit" className="primary-button">
@@ -817,13 +1108,17 @@ const Home = () => {
                     <article key={story.id} className="story-card">
                       <div className="story-card__header">
                         <strong>{story.author.name}</strong>
-                        <span>{story.distanceKm > 0 ? `${story.distanceKm} km` : 'local'}</span>
+                        <span>
+                          {story.distanceKm > 0
+                            ? `${story.distanceKm} km`
+                            : "local"}
+                        </span>
                       </div>
                       <p>{story.text}</p>
                       <p className="muted">{formatDate(story.createdAt)}</p>
                       {story.media ? (
                         <div className="attachment-preview compact">
-                          {story.media.type === 'video' ? (
+                          {story.media.type === "video" ? (
                             <video src={story.media.url} controls />
                           ) : (
                             <img src={story.media.url} alt={story.media.name} />

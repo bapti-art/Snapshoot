@@ -17,6 +17,7 @@
   "dependencies": {
     "@capacitor/android": "8.3.1",
     "@capacitor/core": "8.3.1",
+    "@capacitor/geolocation": "^8.2.0",
     "@ionic/react": "^8.5.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
@@ -25,8 +26,8 @@
     "react-dom": "19.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.29.0",
     "@capacitor/cli": "8.3.1",
+    "@eslint/js": "^9.29.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^22.15.17",

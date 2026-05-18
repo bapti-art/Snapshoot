@@ -37,6 +37,7 @@ npm run dev
 ```
 
 Le front démarre sur `http://localhost:5173` et l’API sur `http://localhost:4000`.
+Le client utilise automatiquement `http://10.0.2.2:4000/api` sur Android emulator si aucune variable d'environnement n'est fournie.
 
 ## Scripts
 
@@ -87,7 +88,15 @@ npm run cap:sync
 npx cap open android
 ```
 
-Pour exécuter l’application sur un émulateur Android, configure l’URL de l’API dans un fichier `.env` avant le build, par exemple:
+Pour exécuter l’application sur un téléphone Android connecté en USB, lance aussi le backend sur ta machine puis fais suivre le port avec adb, par exemple:
+
+```bash
+adb reverse tcp:4000 tcp:4000
+```
+
+Le client Android utilise alors `http://localhost:4000/api` par défaut.
+
+Pour un émulateur Android, tu peux soit garder cette configuration avec `adb reverse`, soit forcer l’URL de l’API dans un fichier `.env` avant le build, par exemple:
 
 ```bash
 VITE_API_BASE_URL=http://10.0.2.2:4000/api
@@ -97,7 +106,7 @@ Sur un appareil physique, remplace cette URL par l’adresse IP joignable de ta 
 
 ## Base JSON
 
-Le backend lit et réécrit `data/db.json`. Les données initiales contiennent déjà des utilisateurs, des messages et des stories pour faciliter la démonstration.
+Le backend lit et réécrit `data/db.json`. Le dépôt inclut une base de départ avec des utilisateurs, des messages et des stories pour faciliter la démonstration.
 
 ## Vérification fonctionnelle
 
