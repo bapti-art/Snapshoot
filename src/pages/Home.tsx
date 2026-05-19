@@ -822,7 +822,8 @@ const Home = () => {
                   <button
                     type="button"
                     className="ghost-button"
-                    onClick={handleAddRecipient}
+                    onClick={() => handleAddRecipient()}
+                    disabled={!recipientCandidateId || !messageDraft.senderId}
                   >
                     Ajouter destinataire
                   </button>
